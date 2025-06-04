@@ -161,7 +161,7 @@ public class TransaksiView extends JFrame {
             String pasienItem = (String) cmbPasien.getSelectedItem();
             String dokterItem = (String) cmbDokter.getSelectedItem();
             String obatItem = (String) cmbObat.getSelectedItem();
-            String jumlah = txtJumlah.getText();
+            int jumlah = Integer.parseInt(txtJumlah.getText());
 
             int idPasien = Integer.parseInt(pasienItem.split(" - ")[0]);
             int idDokter = Integer.parseInt(dokterItem.split(" - ")[0]);
@@ -170,7 +170,7 @@ public class TransaksiView extends JFrame {
             if (obatItem != null && !obatItem.equals("-")) {
                 idObat = Integer.parseInt(obatItem.split(" - ")[0]);
             }
-
+            
             koneksi.insertTransaksi(idPasien, idDokter, idObat, jumlah);
             JOptionPane.showMessageDialog(null, "Transaksi berhasil ditambahkan.");
             resetForm();

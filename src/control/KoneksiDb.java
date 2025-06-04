@@ -25,35 +25,35 @@ public class KoneksiDb {
         return koneksi;
     }
     
-    public void insertTransaksi(Integer idPasien, Integer idDokter, Integer idObat, String jumlah) {
-        try {
-            String sql = "INSERT INTO transaksi (id_pasien, id_dokter, id_obat, jumlah, tgl_transaksi) VALUES (?, ?, ?, ?, ?)";
-            PreparedStatement ps = koneksi.prepareStatement(sql);
+    public void insertTransaksi(int idPasien, int idDokter, Integer idObat, int jumlah) {
+        String query;
+        if (idObat != null) {
+            query = "INSERT INTO transaksi (id_pasien, id_dokter, id_obat, jumlah, total_harga, tgl_transaksi) " +
+                    "VALUES (?, ?, ?, ?, (SELECT harga_obat FROM obat WHERE id_obat = ?) * ?, CURRENT_DATE)";
+        } else {
+            query = "INSERT INTO transaksi (id_pasien, id_dokter, jumlah, total_harga, tgl_transaksi) " +
+                    "VALUES (?, ?, ?, 0, CURRENT_DATE)";
+        }
 
+        try (PreparedStatement ps = koneksi.prepareStatement(query)) {
             ps.setInt(1, idPasien);
             ps.setInt(2, idDokter);
 
-            if (idObat == null) {
-                ps.setNull(3, Types.INTEGER);
-            } else {
+            if (idObat != null) {
                 ps.setInt(3, idObat);
-            }
-
-            if (jumlah == null || jumlah.isEmpty()) {
-                ps.setNull(4, Types.VARCHAR);
+                ps.setInt(4, jumlah);
+                ps.setInt(5, idObat);
+                ps.setInt(6, jumlah);
             } else {
-                ps.setString(4, jumlah);
+                ps.setInt(3, jumlah);
             }
-            
-            Timestamp now = new Timestamp(System.currentTimeMillis());
-            ps.setTimestamp(5, now);
 
             ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
-    
+
     public String[] getAllPasien() {
         ArrayList<String> list = new ArrayList<>();
         try {
@@ -70,7 +70,6 @@ public class KoneksiDb {
         }
         return list.toArray(new String[0]);
     }
-
 
     public String[] getAllDokter() {
         ArrayList<String> list = new ArrayList<>();

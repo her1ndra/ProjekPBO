@@ -219,19 +219,21 @@ public class ControllerPuskesmas {
     // CRUD Transaksi
     public void tambahTransaksi(int idPasien, int idDokter, int idObat, int jumlah, String tglTransaksi) {
         try {
-            // Ambil harga obat
-            String queryHarga = "SELECT harga_obat FROM obat WHERE id_obat = ?";
-            PreparedStatement psHarga = koneksi.koneksi.prepareStatement(queryHarga);
-            psHarga.setInt(1, idObat);
-            ResultSet rs = psHarga.executeQuery();
-            
             int hargaObat = 0;
-            if (rs.next()) {
-                hargaObat = rs.getInt("harga_obat");
+
+            if (idObat > 0) {
+                String queryHarga = "SELECT harga_obat FROM obat WHERE id_obat = ?";
+                PreparedStatement psHarga = koneksi.koneksi.prepareStatement(queryHarga);
+                psHarga.setInt(1, idObat);
+                ResultSet rs = psHarga.executeQuery();
+
+                if (rs.next()) {
+                    hargaObat = rs.getInt("harga_obat");
+                }
             }
-            
-            int totalHarga = (hargaObat * jumlah);
-            
+
+            int totalHarga = hargaObat * jumlah;
+
             String query = "INSERT INTO transaksi (id_pasien, id_dokter, id_obat, jumlah, total_harga, tgl_transaksi) VALUES (?, ?, ?, ?, ?, ?)";
             PreparedStatement ps = koneksi.koneksi.prepareStatement(query);
             ps.setInt(1, idPasien);
@@ -250,12 +252,12 @@ public class ControllerPuskesmas {
         List<ModelPuskesmas> listTransaksi = new ArrayList<>();
         try {
             String query = "SELECT t.*, p.nama_pasien, d.nama_dokter, " +
-                           "COALESCE(o.nama_obat, '-') AS nama_obat, t.jumlah, " +
-                           "COALESCE(o.harga_obat * t.jumlah, 0) AS total_harga, t.tgl_transaksi " +
-                           "FROM transaksi t " +
-                           "JOIN pasien p ON t.id_pasien = p.id_pasien " +
-                           "JOIN dokter d ON t.id_dokter = d.id_dokter " +
-                           "LEFT JOIN obat o ON t.id_obat = o.id_obat";
+                            "COALESCE(o.nama_obat, '-') AS nama_obat, " +
+                            "t.jumlah, t.total_harga, t.tgl_transaksi " +
+                            "FROM transaksi t " +
+                            "JOIN pasien p ON t.id_pasien = p.id_pasien " +
+                            "JOIN dokter d ON t.id_dokter = d.id_dokter " +
+                            "LEFT JOIN obat o ON t.id_obat = o.id_obat";
             Statement stmt = koneksi.koneksi.createStatement();
             ResultSet rs = stmt.executeQuery(query);
             
