@@ -4,6 +4,7 @@ package view;
 
 import control.ControllerPuskesmas;
 import model.ModelPuskesmas;
+import control.KoneksiDb;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -14,7 +15,7 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 
 public class TransaksiView extends JFrame {
-    private JComboBox<String> cmbPasien, cmbDokter, cmbObat;
+    private JComboBox cmbPasien, cmbDokter, cmbObat;
     private JFormattedTextField txtJumlah;
     private JSpinner dateSpinner;
     private JButton btnTambah, btnHapus, btnRefresh;
@@ -22,20 +23,23 @@ public class TransaksiView extends JFrame {
     private DefaultTableModel tableModel;
     private ControllerPuskesmas controller;
     private int selectedId = -1;
+    private JTextField txtId;
+    
+    KoneksiDb koneksi = new KoneksiDb();
 
-    public TransaksiView() {
-        controller = new ControllerPuskesmas();
-        initComponents();
-        loadComboBoxData();
-        refreshTable();
-        setLocationRelativeTo(null);
+    private void resetForm() {
+        cmbPasien.setSelectedIndex(-1);
+        cmbDokter.setSelectedIndex(-1);
+        cmbObat.setSelectedIndex(-1);
+        txtJumlah.setText("");
     }
-
+    
     private void initComponents() {
         setTitle("Transaksi Konsultasi - Sistem Puskesmas");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setSize(900, 600);
         setLayout(new BorderLayout());
+        txtId = new JTextField();
 
         // Panel Input
         JPanel inputPanel = new JPanel(new GridBagLayout());
@@ -112,7 +116,6 @@ public class TransaksiView extends JFrame {
         btnTambah.addActionListener(e -> tambahTransaksi());
         btnHapus.addActionListener(e -> hapusTransaksi());
         btnRefresh.addActionListener(e -> {
-            loadComboBoxData();
             refreshTable();
         });
 
@@ -125,49 +128,55 @@ public class TransaksiView extends JFrame {
             }
         });
     }
-
-    private void loadComboBoxData() {
-        // Load Pasien
-        cmbPasien.removeAllItems();
-        List<ModelPuskesmas> listPasien = controller.getAllPasien();
-        for (ModelPuskesmas pasien : listPasien) {
-            cmbPasien.addItem(pasien.id_pasien + " - " + pasien.nama_pasien);
-        }
-
-        // Load Dokter
-        cmbDokter.removeAllItems();
-        List<ModelPuskesmas> listDokter = controller.getAllDokter();
-        for (ModelPuskesmas dokter : listDokter) {
-            cmbDokter.addItem(dokter.id_dokter + " - " + dokter.nama_dokter + " (" + dokter.spesialis + ")");
-        }
-
-        // Load Obat
-        cmbObat.removeAllItems();
-        List<ModelPuskesmas> listObat = controller.getAllObat();
-        for (ModelPuskesmas obat : listObat) {
-            cmbObat.addItem(obat.id_obat + " - " + obat.nama_obat + " (Rp " + obat.harga_obat + ")");
-        }
+    
+    public TransaksiView() {
+        controller = new ControllerPuskesmas();
+        initComponents();
+        refreshTable();
+        loadDataToComboBox();
+        setLocationRelativeTo(null);
+        resetForm();
     }
 
+    private void loadDataToComboBox() {
+        cmbPasien.removeAllItems();
+        for (String item : koneksi.getAllPasien()) {
+            cmbPasien.addItem(item);
+        }
+
+        cmbDokter.removeAllItems();
+        for (String item : koneksi.getAllDokter()) {
+            cmbDokter.addItem(item);
+        }
+
+        cmbObat.removeAllItems();
+        cmbObat.addItem("-");
+        for (String item : koneksi.getAllObat()) {
+            cmbObat.addItem(item);
+        }
+    }
+ 
     private void tambahTransaksi() {
-        if (validateInput()) {
-            // Extract IDs from combo box selections
-            String selectedPasien = (String) cmbPasien.getSelectedItem();
-            String selectedDokter = (String) cmbDokter.getSelectedItem();
-            String selectedObat = (String) cmbObat.getSelectedItem();
-            
-            int idPasien = Integer.parseInt(selectedPasien.split(" - ")[0]);
-            int idDokter = Integer.parseInt(selectedDokter.split(" - ")[0]);
-            int idObat = Integer.parseInt(selectedObat.split(" - ")[0]);
-            
-            int jumlah = ((Number) txtJumlah.getValue()).intValue();
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-            String tglTransaksi = sdf.format(dateSpinner.getValue());
-            
-            controller.tambahTransaksi(idPasien, idDokter, idObat, jumlah, tglTransaksi);
-            JOptionPane.showMessageDialog(this, "Transaksi berhasil ditambahkan!");
-            clearForm();
+        try {
+            String pasienItem = (String) cmbPasien.getSelectedItem();
+            String dokterItem = (String) cmbDokter.getSelectedItem();
+            String obatItem = (String) cmbObat.getSelectedItem();
+            String jumlah = txtJumlah.getText();
+
+            int idPasien = Integer.parseInt(pasienItem.split(" - ")[0]);
+            int idDokter = Integer.parseInt(dokterItem.split(" - ")[0]);
+            Integer idObat = null;
+
+            if (obatItem != null && !obatItem.equals("-")) {
+                idObat = Integer.parseInt(obatItem.split(" - ")[0]);
+            }
+
+            koneksi.insertTransaksi(idPasien, idDokter, idObat, jumlah);
+            JOptionPane.showMessageDialog(null, "Transaksi berhasil ditambahkan.");
+            resetForm();
             refreshTable();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "Gagal menambahkan transaksi: " + e.getMessage());
         }
     }
 
@@ -216,17 +225,6 @@ public class TransaksiView extends JFrame {
         
         if (cmbDokter.getSelectedItem() == null) {
             JOptionPane.showMessageDialog(this, "Pilih dokter!", "Error", JOptionPane.ERROR_MESSAGE);
-            return false;
-        }
-        
-        if (cmbObat.getSelectedItem() == null) {
-            JOptionPane.showMessageDialog(this, "Pilih obat!", "Error", JOptionPane.ERROR_MESSAGE);
-            return false;
-        }
-        
-        int jumlah = ((Number) txtJumlah.getValue()).intValue();
-        if (jumlah <= 0) {
-            JOptionPane.showMessageDialog(this, "Jumlah harus lebih dari 0!", "Error", JOptionPane.ERROR_MESSAGE);
             return false;
         }
         

@@ -39,7 +39,7 @@ public class ControllerPuskesmas {
     // CRUD Pasien
     public void tambahPasien(String nama, String keluhan, String tglLahir, String gender, String tglKeluhan) {
         try {
-            String query = "INSERT INTO pasien (nama, keluhan, tgl_lahir, gender, tgl_keluhan) VALUES (?, ?, ?, ?, ?)";
+            String query = "INSERT INTO pasien (nama_pasien, keluhan, tgl_lahir, gender, tgl_keluhan) VALUES (?, ?, ?, ?, ?)";
             PreparedStatement ps = koneksi.koneksi.prepareStatement(query);
             ps.setString(1, nama);
             ps.setString(2, keluhan);
@@ -62,7 +62,7 @@ public class ControllerPuskesmas {
             while (rs.next()) {
                 ModelPuskesmas pasien = new ModelPuskesmas();
                 pasien.id_pasien = rs.getInt("id_pasien");
-                pasien.nama_pasien = rs.getString("nama");
+                pasien.nama_pasien = rs.getString("nama_pasien");
                 pasien.keluhan = rs.getString("keluhan");
                 pasien.tgl_lahir = rs.getString("tgl_lahir");
                 pasien.gender = rs.getString("gender");
@@ -77,7 +77,7 @@ public class ControllerPuskesmas {
 
     public void updatePasien(int id, String nama, String keluhan, String tglLahir, String gender, String tglKeluhan) {
         try {
-            String query = "UPDATE pasien SET nama=?, keluhan=?, tgl_lahir=?, gender=?, tgl_keluhan=? WHERE id_pasien=?";
+            String query = "UPDATE pasien SET nama_pasien=?, keluhan=?, tgl_lahir=?, gender=?, tgl_keluhan=? WHERE id_pasien=?";
             PreparedStatement ps = koneksi.koneksi.prepareStatement(query);
             ps.setString(1, nama);
             ps.setString(2, keluhan);
@@ -230,7 +230,7 @@ public class ControllerPuskesmas {
                 hargaObat = rs.getInt("harga_obat");
             }
             
-            int totalHarga = hargaObat * jumlah;
+            int totalHarga = (hargaObat * jumlah);
             
             String query = "INSERT INTO transaksi (id_pasien, id_dokter, id_obat, jumlah, total_harga, tgl_transaksi) VALUES (?, ?, ?, ?, ?, ?)";
             PreparedStatement ps = koneksi.koneksi.prepareStatement(query);
@@ -249,11 +249,13 @@ public class ControllerPuskesmas {
     public List<ModelPuskesmas> getAllTransaksi() {
         List<ModelPuskesmas> listTransaksi = new ArrayList<>();
         try {
-            String query = "SELECT t.*, p.nama as nama_pasien, d.nama_dokter, o.nama_obat " +
-                          "FROM transaksi t " +
-                          "JOIN pasien p ON t.id_pasien = p.id_pasien " +
-                          "JOIN dokter d ON t.id_dokter = d.id_dokter " +
-                          "JOIN obat o ON t.id_obat = o.id_obat";
+            String query = "SELECT t.*, p.nama_pasien, d.nama_dokter, " +
+                           "COALESCE(o.nama_obat, '-') AS nama_obat, t.jumlah, " +
+                           "COALESCE(o.harga_obat * t.jumlah, 0) AS total_harga, t.tgl_transaksi " +
+                           "FROM transaksi t " +
+                           "JOIN pasien p ON t.id_pasien = p.id_pasien " +
+                           "JOIN dokter d ON t.id_dokter = d.id_dokter " +
+                           "LEFT JOIN obat o ON t.id_obat = o.id_obat";
             Statement stmt = koneksi.koneksi.createStatement();
             ResultSet rs = stmt.executeQuery(query);
             
